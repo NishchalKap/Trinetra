@@ -44,9 +44,11 @@ No frontend environment variable is required locally. Vite proxies `/api` and
 
 ## Vercel frontend
 
-Import `TheEliteParty/Tri-Netra`, leave the Vercel project root at the
-repository root, and use the committed `vercel.json`. Configure this public
-build variable for Production and Preview:
+Import `NishchalKap/Trinetra`, leave the Vercel project root at the repository
+root, and use the committed `vercel.json`. It defines one public Vite service
+named `frontend`; the `backend` directory remains a long-running Render service
+and is not deployed by Vercel. Configure this public build variable for
+Production and Preview:
 
 ```text
 VITE_API_BASE_URL=https://<your-render-host>
