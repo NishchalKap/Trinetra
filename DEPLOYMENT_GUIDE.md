@@ -1,19 +1,21 @@
 # Tri-Netra deployment guide
 
-## Production architecture
+## Deployment architecture
 
-Deploy the React/Vite frontend to Vercel, the FastAPI service to Render, and
-use hosted PostgreSQL for durable production data.
+The committed `vercel.json` provides a self-contained hosted demo. Vercel
+Services deploys the React/Vite frontend and FastAPI backend together, routes
+`/api/*` and `/ws/*` to FastAPI, and serves everything from one origin. Demo
+instances use seeded SQLite under Vercel's ephemeral `/tmp` directory.
 
 ```text
 Browser -> Vercel (Vite frontend and committed /gis assets)
-        -> Render (FastAPI HTTP and WebSockets)
-        -> hosted PostgreSQL
+        -> Vercel (FastAPI HTTP and WebSockets) -> ephemeral demo SQLite
 ```
 
-The scientific Python backend is intentionally a long-running service rather
-than a Vercel Function. Its WebSocket connection manager is process-local, so
-run one Render instance until a shared pub/sub layer is added.
+For durable production data, configure hosted PostgreSQL and production secrets
+or point the frontend at the `render.yaml` service. The WebSocket connection
+manager is process-local, so a production backend should run one instance until
+a shared pub/sub layer is added.
 
 ## Local development
 
@@ -42,25 +44,28 @@ npm run dev
 No frontend environment variable is required locally. Vite proxies `/api` and
 `/ws`; committed assets under `frontend/public/gis` are served directly by Vite.
 
-## Vercel frontend
+## Vercel hosted demo
 
 Import `NishchalKap/Trinetra`, leave the Vercel project root at the repository
-root, and use the committed `vercel.json`. It defines one public Vite service
-named `frontend`; the `backend` directory remains a long-running Render service
-and is not deployed by Vercel. Configure this public build variable for
-Production and Preview:
+root, and use the committed `vercel.json`. It defines `frontend` and `backend`
+services on the same public domain. No API URL is required for this mode; the
+browser uses the same-origin `/api` route. To expose the quick demo accounts,
+configure this public build variable for Production and Preview:
 
 ```text
-VITE_API_BASE_URL=https://<your-render-host>
+VITE_ENABLE_DEMO_LOGIN=true
 ```
 
-The value may include `/api`. The app fails API requests explicitly if this
-variable is missing from a production build. Leave `VITE_ENABLE_DEMO_LOGIN`
-unset or `false` so local demo credentials are not bundled. `HashRouter` keeps
-application routes client-side. Vercel publishes the committed
+Set `APP_ENV=demo` for the current hosted demo. Its seeded SQLite database is
+recreated on cold starts and must not be used for durable data. `HashRouter`
+keeps application routes client-side. Vercel publishes the committed
 `frontend/public/gis` GeoJSON and PNG assets at `/gis/*`.
 
-## Render backend
+To use an external Render backend instead, set
+`VITE_API_BASE_URL=https://<your-render-host>`; the value may include `/api`.
+Set `VITE_ENABLE_DEMO_LOGIN=false` when demo credentials must not be bundled.
+
+## Render backend for durable production
 
 `render.yaml` defines the backend-only service on `main`. The release command
 installs backend dependencies, applies committed Alembic migrations, and only

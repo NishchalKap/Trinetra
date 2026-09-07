@@ -30,6 +30,7 @@ logs/
 .env
 .env.local
 .env.production
+.vercel/
 
 # IDE
 .vscode/

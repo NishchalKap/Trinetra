@@ -1,0 +1,4 @@
+# Local-only generated state and the untracked GIS workspace are not deployment inputs.
+.vercel/
+frontend/.vercel/
+ner_gis_package/

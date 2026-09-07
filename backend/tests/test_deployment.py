@@ -41,6 +41,8 @@ def _config_process(
         env=environment,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=20,
     )
 
@@ -104,6 +106,30 @@ class TestProductionConfiguration:
         assert result.returncode != 0
         assert "exact http(s) origins" in result.stderr
 
+    def test_vercel_demo_uses_ephemeral_sqlite(self, tmp_path):
+        result = _config_process(
+            {"APP_ENV": "demo", "VERCEL": "1", "TMPDIR": str(tmp_path)},
+            remove=("DATABASE_URL",),
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().endswith("/trinetra.db")
+        assert tmp_path.as_posix() in result.stdout.strip()
+
+    def test_vercel_demo_boots_and_accepts_demo_login(self, tmp_path):
+        result = _config_process(
+            {"APP_ENV": "demo", "VERCEL": "1", "TMPDIR": str(tmp_path)},
+            remove=("DATABASE_URL",),
+            code=(
+                "from fastapi.testclient import TestClient; "
+                "from app.main import app; "
+                "response = TestClient(app).post('/api/auth/login', "
+                "data={'email': 'admin@trinetra.gov.in', 'password': 'admin123'}); "
+                "print(response.status_code, response.json()['user']['role'])"
+            ),
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().endswith("200 admin")
+
 
 class TestOriginAndWebSocketSecurity:
     def test_cors_allows_configured_local_origin(self):
@@ -135,6 +161,18 @@ class TestOriginAndWebSocketSecurity:
             ):
                 pass
         assert exc.value.code == 1008
+
+    def test_websocket_allows_same_origin(self):
+        login = client.post(
+            "/api/auth/login",
+            data={"email": "admin@trinetra.gov.in", "password": "admin123"},
+        )
+        token = login.json()["token"]
+        with client.websocket_connect(
+            f"/ws/alerts/all?token={token}",
+            headers={"Origin": "http://testserver"},
+        ) as websocket:
+            assert websocket.receive_json()["type"] == "connected"
 
     def test_authenticated_websocket_ping_pong(self):
         login = client.post(

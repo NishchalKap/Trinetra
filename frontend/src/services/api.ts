@@ -21,9 +21,9 @@ const isMobile = () => {
   } catch { return false; }
 };
 
-// For Electron/mobile: use localhost (backend runs locally).
-// For web development: use the Vite /api proxy. Production requires the
-// public Render origin through VITE_API_BASE_URL.
+// Electron/mobile can connect to a local backend. Browser builds use the
+// same-origin Vercel API service unless VITE_API_BASE_URL points to an
+// external backend such as Render.
 const normalizeHost = (h: string): string => {
   let host = h.replace(/^https?:\/\//, '').replace(/\/+$/, '');
   if (!host.includes(':')) host += ':8000';
@@ -47,9 +47,6 @@ export const getApiBase = () => {
     return 'http://localhost:8000/api';
   }
   if (configuredWebApiBase) return withApiPath(configuredWebApiBase);
-  if (import.meta.env.PROD) {
-    throw new Error('VITE_API_BASE_URL is required for production web builds');
-  }
   return '/api';
 };
 
@@ -75,6 +72,7 @@ export const getServerUrl = () => {
 };
 
 export const isMobileApp = isMobile;
+export const canConfigureServer = () => isElectron() || isMobile();
 
 // --- JWT token management ---
 const TOKEN_KEY = 'trinetra_token';

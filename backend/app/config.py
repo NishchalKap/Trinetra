@@ -38,7 +38,9 @@ def normalize_database_url(value: str) -> str:
 
 
 _backend_dir = Path(__file__).resolve().parents[1]
-_local_database = f"sqlite:///{(_backend_dir / 'trinetra.db').as_posix()}"
+_is_vercel = bool(os.getenv("VERCEL"))
+_local_database_path = Path(os.getenv("TMPDIR", "/tmp")) / "trinetra.db" if _is_vercel else _backend_dir / "trinetra.db"
+_local_database = f"sqlite:///{_local_database_path.as_posix()}"
 DATABASE_URL = normalize_database_url(_production_value("DATABASE_URL") or _local_database)
 if IS_PRODUCTION and DATABASE_URL.startswith("sqlite"):
     raise RuntimeError("SQLite is not supported in production; configure PostgreSQL")

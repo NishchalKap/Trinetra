@@ -5,6 +5,7 @@ Backend API Server for Smart India Hackathon 2026
 import os
 import sys
 import logging
+from urllib.parse import urlparse
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -158,7 +159,9 @@ def _websocket_origin_allowed(websocket: WebSocket) -> bool:
     origin = (websocket.headers.get("origin") or "").rstrip("/")
     if not origin:
         return not IS_PRODUCTION
-    return origin in CORS_ORIGINS
+    request_host = (websocket.headers.get("host") or "").lower()
+    same_origin = urlparse(origin).netloc.lower() == request_host
+    return same_origin or origin in CORS_ORIGINS
 
 
 async def _serve_alert_socket(websocket: WebSocket, requested_district: str) -> None:
