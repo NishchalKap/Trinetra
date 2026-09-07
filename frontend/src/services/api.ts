@@ -21,6 +21,14 @@ const isMobile = () => {
   } catch { return false; }
 };
 
+// A hosted page remains a web deployment even when it is displayed inside an
+// Electron-based browser (for example, an in-app browser). Check the URL before
+// looking at the user agent so HTTPS deployments never fall back to localhost.
+const isWebOrigin = () => {
+  if (typeof window === 'undefined') return false;
+  return window.location.protocol === 'http:' || window.location.protocol === 'https:';
+};
+
 // Electron/mobile can connect to a local backend. Browser builds use the
 // same-origin Vercel API service unless VITE_API_BASE_URL points to an
 // external backend such as Render.
@@ -35,6 +43,10 @@ const configuredWebApiBase = (import.meta.env.VITE_API_BASE_URL || '').trim().re
 const withApiPath = (value: string) => /\/api$/i.test(value) ? value : `${value}/api`;
 
 export const getApiBase = () => {
+  if (isWebOrigin()) {
+    if (configuredWebApiBase) return withApiPath(configuredWebApiBase);
+    return '/api';
+  }
   if (isElectron()) {
     const savedUrl = localStorage.getItem('trinetra_server_url');
     if (savedUrl) return `http://${normalizeHost(savedUrl)}/api`;
@@ -60,19 +72,6 @@ api.interceptors.request.use((config) => {
   config.baseURL = getApiBase();
   return config;
 });
-
-// Allow mobile app to change server URL
-export const setServerUrl = (url: string) => {
-  localStorage.setItem('trinetra_server_url', url);
-  window.location.reload();
-};
-
-export const getServerUrl = () => {
-  return localStorage.getItem('trinetra_server_url') || '';
-};
-
-export const isMobileApp = isMobile;
-export const canConfigureServer = () => isElectron() || isMobile();
 
 // --- JWT token management ---
 const TOKEN_KEY = 'trinetra_token';

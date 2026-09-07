@@ -1,7 +1,7 @@
 import { HashRouter as Router, Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { t, setLanguage, getCurrentLanguage, Language, languages } from './i18n/translations';
-import { loginAPI, setStoredToken, clearStoredToken, getStoredToken, getAlertStats, getServerUrl, canConfigureServer, getApiBase } from './services/api';
+import { loginAPI, setStoredToken, clearStoredToken, getStoredToken, getAlertStats, getApiBase } from './services/api';
 import Dashboard from './pages/Dashboard';
 import RiskMap from './pages/RiskMap';
 import Alerts from './pages/Alerts';
@@ -25,7 +25,7 @@ import {
   LayoutDashboard, Map, AlertTriangle, FileText, Globe, Shield, Radio,
   ChevronLeft, Clock, LogOut, User, Bell, Search, Activity, Mountain,
   Droplets, BarChart3, Settings, Home, TrendingUp, Building2, MapPin, Zap, Satellite, Rocket, Waves,
-  Server, KeyRound, Sparkles, CheckCircle2, ChevronDown, ChevronUp
+  KeyRound, Sparkles, CheckCircle2
 } from 'lucide-react';
 
 interface AuthContextType {
@@ -51,79 +51,6 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState('');
-  const [serverInput, setServerInput] = useState('');
-  const [showServerSettings, setShowServerSettings] = useState(false);
-  const allowServerOverride = canConfigureServer();
-
-  useEffect(() => {
-    const saved = getServerUrl();
-    setApiUrl(getApiBase());
-    setServerInput(saved || '');
-    setShowServerSettings(false);
-  }, []);
-
-  const connectToServer = (server: string) => {
-    const raw = server.trim();
-    if (!raw) return;
-    let url = raw.replace(/^https?:\/\//, '').replace(/\/+$/, '');
-    if (!url.includes(':')) url += ':8000';
-    localStorage.setItem('trinetra_server_url', url);
-    const newApiUrl = `http://${url}/api`;
-    setApiUrl(newApiUrl);
-    setShowServerSettings(false);
-    setError('');
-  };
-
-  const saveServerUrl = () => connectToServer(serverInput);
-
-  const clearServerUrl = () => {
-    localStorage.removeItem('trinetra_server_url');
-    setServerInput('');
-    setApiUrl(getApiBase());
-    setShowServerSettings(true);
-    setError('Server URL cleared. Please enter a new one above.');
-  };
-
-  const detectServer = async () => {
-    setLoading(true);
-    setError('');
-    const candidates = [
-      'localhost:8000',
-      '127.0.0.1:8000',
-      '10.139.21.12:8000',
-      '10.123.230.162:8000',
-      '10.0.2.2:8000',
-      '192.168.1.1:8000',
-      '192.168.1.100:8000',
-      '192.168.0.1:8000',
-      '192.168.0.100:8000',
-      '172.16.0.1:8000',
-    ];
-    
-    for (const candidate of candidates) {
-      try {
-        const testUrl = `http://${candidate}/api/health`;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(testUrl, { signal: controller.signal, mode: 'cors' });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          setServerInput(candidate);
-          connectToServer(candidate);
-          setError(`Connected to server at ${candidate}`);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {
-        // try next
-      }
-    }
-    
-    setError('Auto-detect failed. Please enter server IP manually below.');
-    setShowServerSettings(true);
-    setLoading(false);
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,10 +72,7 @@ function LoginPage() {
       const currentApiUrl = getApiBase();
       const isNetworkError = !err.response || status === 0 || status === undefined || err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.code === 'ERR_NETWORK';
       if (isNetworkError) {
-        const nextStep = allowServerOverride
-          ? 'Check the network or update the server address above.'
-          : 'The hosted API is unavailable. Please retry shortly.';
-        setError(`Cannot reach backend at ${currentApiUrl}. ${nextStep}`);
+        setError(`Cannot reach backend at ${currentApiUrl}. The application API is unavailable; please retry shortly.`);
       } else if (status === 401) {
         setError(detail || 'Invalid email or password');
       } else {
@@ -186,46 +110,6 @@ function LoginPage() {
               <div className="text-xs rounded-xl px-3.5 py-2.5 bg-rose-50 border border-rose-200 text-rose-700 font-medium flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0 text-rose-500" />
                 <span className="flex-1">{error}</span>
-              </div>
-            )}
-
-            {/* Local server selection is only relevant to Electron/mobile clients. */}
-            {allowServerOverride && (
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 overflow-hidden transition-all">
-                <button
-                  type="button"
-                  onClick={() => setShowServerSettings(!showServerSettings)}
-                  className="w-full px-3.5 py-2.5 flex items-center justify-between text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100/60 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Server className="w-3.5 h-3.5 text-sky-600" />
-                    Server Connection ({apiUrl})
-                  </span>
-                  {showServerSettings ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
-                </button>
-
-                {showServerSettings && (
-                  <div className="p-3 border-t border-slate-200/60 space-y-2">
-                    <Input
-                      type="text"
-                      value={serverInput}
-                      onChange={(e) => setServerInput(e.target.value)}
-                      placeholder="e.g. localhost:8000 or 10.0.2.2:8000"
-                      className="h-8 text-xs"
-                    />
-                    <div className="flex gap-1.5">
-                      <Button type="button" size="sm" variant="sky" onClick={saveServerUrl} className="flex-1 text-[11px]">
-                        Save & Connect
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" onClick={detectServer} disabled={loading} className="flex-1 text-[11px]">
-                        Auto-detect
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={clearServerUrl} className="text-[11px] text-slate-500 hover:text-rose-600">
-                        Clear
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -305,7 +189,6 @@ function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeAlerts, setActiveAlerts] = useState(0);
-  const [serverUrl, setServerUrlState] = useState(getServerUrl());
   const { user, logout } = useAuth();
   const location = useLocation();
 
