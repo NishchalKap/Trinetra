@@ -1,0 +1,4 @@
+# Optional heavyweight model used by local, Docker, and Render deployments.
+# Vercel omits it to stay within the Python function bundle limit; the API's
+# enhanced predictor automatically uses its rule-based fallback there.
+xgboost>=2.0.0

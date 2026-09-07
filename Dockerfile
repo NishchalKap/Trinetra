@@ -10,8 +10,8 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Install Python dependencies
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt backend/requirements-ml.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-ml.txt
 
 # Copy backend
 COPY backend/ ./backend/

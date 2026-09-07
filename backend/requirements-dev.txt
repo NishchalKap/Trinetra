@@ -1,3 +1,4 @@
 -r requirements.txt
+-r requirements-ml.txt
 pytest>=8.0.0
 httpx2>=0.27.0

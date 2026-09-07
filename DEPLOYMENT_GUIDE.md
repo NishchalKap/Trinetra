@@ -61,6 +61,11 @@ recreated on cold starts and must not be used for durable data. `HashRouter`
 keeps application routes client-side. Vercel publishes the committed
 `frontend/public/gis` GeoJSON and PNG assets at `/gis/*`.
 
+The Vercel backend omits optional XGBoost to remain below the Python function
+bundle limit; the enhanced predictor uses its built-in rule-based fallback.
+Local development, Docker, and Render install `requirements-ml.txt` and retain
+the complete XGBoost path.
+
 To use an external Render backend instead, set
 `VITE_API_BASE_URL=https://<your-render-host>`; the value may include `/api`.
 Set `VITE_ENABLE_DEMO_LOGIN=false` when demo credentials must not be bundled.

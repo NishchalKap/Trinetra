@@ -4,7 +4,7 @@ services:
     runtime: python
     branch: main
     region: singapore
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: pip install -r backend/requirements.txt -r backend/requirements-ml.txt
     startCommand: cd backend && python -m alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
